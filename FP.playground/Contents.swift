@@ -1,29 +1,25 @@
-struct SomeData {
-    var currentData: Date
-}
-
-// ---------------------------------------------------------------------------
-func tellMeTheTruth(someData: SomeData) -> Bool {
-    if someData.currentData > Date() {
-        return true
-    }
-
-    return false
-}
-
-func tellMeTheTruth(someData: SomeData, compareDate: Date) -> Bool {
-    if someData.currentData > compareDate {
-        return true
-    }
-
-    return false
-}
-// ---------------------------------------------------------------------------
-
 import Foundation
+
+typealias CurryFunction<A, B, C> = (A, B) -> C
+typealias CurryOutputFunction<A, B, C> = (A) -> ((B) -> C)
+
+func curry<A, B, C>(f: @escaping CurryFunction<A, B, C>) -> CurryOutputFunction<A, B, C> {
+    return { a in { b in f(a, b) } }
+}
+
+func sum(a: Int, b: Int) -> Int { return a + b }
+
+let curriedFunction = curry(f: sum)
+let curriedFunctionOneParam = curriedFunction(3)
+let finalValue = curriedFunctionOneParam(4)
+
+precedencegroup InjectOperator {
+    associativity: left
+}
 
 precedencegroup FunctionComposition {
     associativity: left
+    higherThan: InjectOperator
 }
 
 infix operator ⏭: FunctionComposition
@@ -33,15 +29,31 @@ func ⏭<A, B, C>(f: @escaping (A) -> B, g: @escaping (B) -> C) -> ((A) -> C) {
         return g(f(input))
     }
 }
-//
-func triple(a: Int) -> Int { return a * 3 }
-func square(a: Int) -> Int { return a * a }
+
+func triple(a: Int) -> Int {
+    print("tripling \(a)")
+    return a * 3
+}
+func square(a: Int) -> Int {
+    print("squaring \(a)")
+    return a * a
+}
 
 (triple ⏭ square)(2)
 
-func convert(a: Int) -> String { return String.init(a) }
+infix operator ⤵️: InjectOperator
+func ⤵️<T, U>(value: T, f: (T) -> U) -> U {
+    return f(value)
+}
 
-(triple ⏭ square ⏭ convert)(2)
+let value = 2 ⤵️ triple ⏭ square
+
+func convert(a: Int) -> String {
+    print("converting \(a)")
+    return String.init(a)
+}
+
+(triple ⏭ square ⏭ convert)(3)
 
 enum Result<T> {
     case success(T)
@@ -67,7 +79,7 @@ extension Result: Equatable {
         }
     }
 }
-//
+
 func evaluateMyString(inputString: String) -> Result<String> {
     print("1 evaluateMyString")
     if inputString.count % 2 == 0 {
@@ -102,3 +114,4 @@ case let .success(value):
 case let .failure(error):
     print("👎🏼 \(error)")
 }
+
